@@ -1,11 +1,12 @@
 (() => {
   'use strict';
 
-  const API_BASE = 'https://restcountries.com/v3.1/all';
+  const API_BASE = 'https://restcountries.com/v3.1/alpha';
+  const COUNTRY_CODES = ['usa', 'can', 'mex', 'jpn', 'bra'];
   const COUNTRY_FIELDS = [
     'cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags'
   ];
-  const COUNTRY_CACHE_KEY = 'countryScopeCountriesV3';
+  const COUNTRY_CACHE_KEY = 'countryScopeCountriesV4FiveCountryPull';
   const COUNTRY_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 14;
   const CURRENT_YEAR = new Date().getFullYear();
 
@@ -116,23 +117,23 @@
 
     if (usedCache) {
       hydrateCountries(cachedCountries, 'cache');
-      els.dataStatus.textContent = `${state.countries.length} countries ready from local cache. Refreshing live data…`;
+      els.dataStatus.textContent = `${state.countries.length} countries ready from local cache. Refreshing the five-country live set…`;
     } else {
-      els.dataStatus.textContent = 'Loading live country data…';
+      els.dataStatus.textContent = 'Loading 5 live countries…';
     }
 
     try {
       const raw = await fetchCountryFields(COUNTRY_FIELDS);
       const countries = normalizeCountryList(raw);
-      if (!countries.length) throw new Error('REST Countries returned no usable countries.');
+      if (countries.length !== COUNTRY_CODES.length) throw new Error(`Expected ${COUNTRY_CODES.length} countries, received ${countries.length}.`);
       writeCountryCache(countries);
       hydrateCountries(countries, 'live');
       els.dataStatus.textContent = `${state.countries.length} countries loaded live from REST Countries.`;
-      if (usedCache) showToast('Live country data refreshed.');
+      if (usedCache) showToast('Five-country live data refreshed.');
     } catch (error) {
       console.error('Country data error:', error.message, error.stack);
       if (usedCache || state.countries.length) {
-        els.dataStatus.textContent = `${state.countries.length} countries loaded instantly from cache. Live refresh is still unavailable.`;
+        els.dataStatus.textContent = `${state.countries.length} countries loaded from cache. Live refresh is still unavailable.`;
         return;
       }
       els.dataStatus.textContent = 'Country data could not load. Please refresh or check your connection.';
@@ -141,23 +142,55 @@
   }
 
   async function fetchCountryFields(fields) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const url = `${API_BASE}?fields=${encodeURIComponent(fields.join(','))}`;
+      return await fetchCountryBatch(fields);
+    } catch (batchError) {
+      console.warn('Batch country request failed, trying one country at a time:', batchError.message);
+      return fetchCountriesOneByOne(fields);
+    }
+  }
+
+  async function fetchCountryBatch(fields) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    try {
+      const url = `${API_BASE}?codes=${encodeURIComponent(COUNTRY_CODES.join(','))}&fields=${encodeURIComponent(fields.join(','))}`;
       const response = await fetch(url, {
         signal: controller.signal,
-        cache: 'default',
+        cache: 'no-store',
         headers: { Accept: 'application/json' }
       });
       if (!response.ok) {
         let details = '';
         try { details = await response.text(); } catch (_) { details = ''; }
-        throw new Error(`REST Countries request failed: ${response.status}${details ? ` — ${details.slice(0, 120)}` : ''}`);
+        throw new Error(`REST Countries batch request failed: ${response.status}${details ? ` — ${details.slice(0, 120)}` : ''}`);
       }
       const data = await response.json();
-      if (!Array.isArray(data)) throw new Error('REST Countries returned an unexpected response shape.');
+      if (!Array.isArray(data)) throw new Error('REST Countries returned an unexpected batch response shape.');
       return data;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function fetchCountriesOneByOne(fields) {
+    const results = await Promise.all(COUNTRY_CODES.map((code) => fetchSingleCountry(code, fields)));
+    return results.filter(Boolean);
+  }
+
+  async function fetchSingleCountry(code, fields) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const url = `${API_BASE}/${encodeURIComponent(code)}?fields=${encodeURIComponent(fields.join(','))}`;
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error(`REST Countries request for ${code.toUpperCase()} failed: ${response.status}`);
+      const data = await response.json();
+      return Array.isArray(data) ? data[0] : data;
     } finally {
       clearTimeout(timeout);
     }
@@ -169,7 +202,7 @@
 
   function hydrateCountries(countries, source) {
     const previousCodes = state.selected.map((country) => country.code);
-    const starterCodes = ['USA', 'BRA', 'JPN', 'NGA'];
+    const starterCodes = ['USA', 'CAN', 'MEX', 'JPN', 'BRA'];
     const selectedCodes = state.hasLoadedCountries ? previousCodes : starterCodes;
     state.countries = countries;
     state.selected = selectedCodes.map((code) => state.countries.find((country) => country.code === code)).filter(Boolean);
@@ -178,7 +211,7 @@
     populateHomeCountries();
     applyProfileToForm();
     renderAll();
-    if (source === 'cache') console.info('CountryScope rendered cached country data first for a faster start.');
+    if (source === 'cache') console.info('CountryScope rendered cached five-country data first for a faster start.');
   }
 
   function readCountryCache() {
@@ -278,9 +311,9 @@
         return haystack.includes(query);
       });
     }
-    list = list.slice(0, 12);
+    list = list.slice(0, 5);
     if (!list.length) {
-      els.suggestions.innerHTML = '<div class="empty-state"><div>🔎</div><h3>No matches</h3><p>Try another search or region.</p></div>';
+      els.suggestions.innerHTML = '<div class="empty-state"><div>🔎</div><h3>No more countries</h3><p>The simplified live set contains 5 countries. Remove one from the board to add it again.</p></div>';
       return;
     }
     els.suggestions.innerHTML = list.map((country) => `
@@ -340,8 +373,8 @@
           <div class="stat"><span>Capital</span><strong>${escapeHtml(country.capital)}</strong></div>
         </div>
         <div class="tag-list">
-          <span class="tag">${country.independent === true ? 'Independent' : country.independent === false ? 'Not independent / special status' : 'Status unavailable'}</span>
-          <span class="tag">${country.landlocked === true ? 'Landlocked' : country.landlocked === false ? 'Coastal access' : 'Coastline status unavailable'}</span>
+          <span class="tag">Live country data</span>
+          <span class="tag">Simplified 5-country set</span>
           <span class="tag">${escapeHtml(country.languages.slice(0, 2).join(', ') || 'Languages unavailable')}</span>
         </div>
       </article>
@@ -451,19 +484,9 @@
 
   function surpriseMe() {
     if (!state.countries.length) return;
-    const regions = [...new Set(state.countries.map((country) => country.region))];
-    const picks = [];
-    regions.forEach((region) => {
-      const pool = state.countries.filter((country) => country.region === region);
-      if (pool.length) picks.push(pool[Math.floor(Math.random() * pool.length)]);
-    });
-    while (picks.length < 5 && picks.length < state.countries.length) {
-      const random = state.countries[Math.floor(Math.random() * state.countries.length)];
-      if (!picks.some((country) => country.code === random.code)) picks.push(random);
-    }
-    state.selected = picks.slice(0, 6);
+    state.selected = [...state.countries];
     renderAll();
-    showToast('A cross-region country set is ready.');
+    showToast('All 5 live countries are on the board.');
   }
 
   function flagMarkup(country) {

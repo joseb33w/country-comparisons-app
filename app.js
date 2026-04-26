@@ -1,7 +1,11 @@
 (() => {
   'use strict';
 
-  const API_URL = 'https://restcountries.com/v3.1/all?fields=name,capital,region,subregion,population,area,languages,currencies,flags,continents,timezones,cca3,independent,landlocked,maps,latlng';
+  const API_BASE = 'https://restcountries.com/v3.1/all';
+  const COUNTRY_FIELD_SETS = [
+    ['cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags'],
+    ['cca3', 'independent', 'landlocked', 'continents', 'timezones', 'maps', 'latlng']
+  ];
   const CURRENT_YEAR = new Date().getFullYear();
 
   const state = {
@@ -106,13 +110,11 @@
 
   async function fetchCountries() {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000);
-      const response = await fetch(API_URL, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (!response.ok) throw new Error(`REST Countries request failed: ${response.status}`);
-      const raw = await response.json();
+      els.dataStatus.textContent = 'Loading live country data…';
+      const payloads = await Promise.all(COUNTRY_FIELD_SETS.map(fetchCountryFields));
+      const raw = mergeCountryPayloads(payloads);
       state.countries = raw.map(normalizeCountry).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+      if (!state.countries.length) throw new Error('REST Countries returned no usable countries.');
       if (!state.selected.length) {
         const starterCodes = ['USA', 'BRA', 'JPN', 'NGA'];
         state.selected = starterCodes.map((code) => state.countries.find((country) => country.code === code)).filter(Boolean);
@@ -121,12 +123,37 @@
       populateHomeCountries();
       applyProfileToForm();
       renderAll();
-      els.dataStatus.textContent = `${state.countries.length} countries loaded from REST Countries.`;
+      els.dataStatus.textContent = `${state.countries.length} countries loaded live from REST Countries.`;
     } catch (error) {
       console.error('Country data error:', error.message, error.stack);
       els.dataStatus.textContent = 'Country data could not load. Please refresh or check your connection.';
       showToast('Unable to load live country data.');
     }
+  }
+
+  async function fetchCountryFields(fields) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const url = `${API_BASE}?fields=${encodeURIComponent(fields.join(','))}`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(`REST Countries request failed: ${response.status}`);
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('REST Countries returned an unexpected response shape.');
+      return data;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function mergeCountryPayloads(payloads) {
+    const merged = new Map();
+    payloads.flat().forEach((country) => {
+      const code = country && (country.cca3 || (country.name && country.name.common));
+      if (!code) return;
+      merged.set(code, { ...(merged.get(code) || {}), ...country });
+    });
+    return [...merged.values()];
   }
 
   function normalizeCountry(country) {

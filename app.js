@@ -3,10 +3,9 @@
 
   const API_BASE = 'https://restcountries.com/v3.1/all';
   const COUNTRY_FIELDS = [
-    'cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags',
-    'independent', 'landlocked', 'continents', 'timezones', 'maps', 'latlng'
+    'cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags'
   ];
-  const COUNTRY_CACHE_KEY = 'countryScopeCountriesV2';
+  const COUNTRY_CACHE_KEY = 'countryScopeCountriesV3';
   const COUNTRY_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 14;
   const CURRENT_YEAR = new Date().getFullYear();
 
@@ -143,11 +142,19 @@
 
   async function fetchCountryFields(fields) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const url = `${API_BASE}?fields=${fields.join(',')}`;
-      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      if (!response.ok) throw new Error(`REST Countries request failed: ${response.status}`);
+      const url = `${API_BASE}?fields=${encodeURIComponent(fields.join(','))}`;
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: 'default',
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) {
+        let details = '';
+        try { details = await response.text(); } catch (_) { details = ''; }
+        throw new Error(`REST Countries request failed: ${response.status}${details ? ` — ${details.slice(0, 120)}` : ''}`);
+      }
       const data = await response.json();
       if (!Array.isArray(data)) throw new Error('REST Countries returned an unexpected response shape.');
       return data;
@@ -333,8 +340,8 @@
           <div class="stat"><span>Capital</span><strong>${escapeHtml(country.capital)}</strong></div>
         </div>
         <div class="tag-list">
-          <span class="tag">${country.independent ? 'Independent' : 'Not independent / special status'}</span>
-          <span class="tag">${country.landlocked ? 'Landlocked' : 'Coastal access'}</span>
+          <span class="tag">${country.independent === true ? 'Independent' : country.independent === false ? 'Not independent / special status' : 'Status unavailable'}</span>
+          <span class="tag">${country.landlocked === true ? 'Landlocked' : country.landlocked === false ? 'Coastal access' : 'Coastline status unavailable'}</span>
           <span class="tag">${escapeHtml(country.languages.slice(0, 2).join(', ') || 'Languages unavailable')}</span>
         </div>
       </article>

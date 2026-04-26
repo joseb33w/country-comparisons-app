@@ -2,10 +2,12 @@
   'use strict';
 
   const API_BASE = 'https://restcountries.com/v3.1/all';
-  const COUNTRY_FIELD_SETS = [
-    ['cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags'],
-    ['cca3', 'independent', 'landlocked', 'continents', 'timezones', 'maps', 'latlng']
+  const COUNTRY_FIELDS = [
+    'cca3', 'name', 'capital', 'region', 'subregion', 'population', 'area', 'languages', 'currencies', 'flags',
+    'independent', 'landlocked', 'continents', 'timezones', 'maps', 'latlng'
   ];
+  const COUNTRY_CACHE_KEY = 'countryScopeCountriesV2';
+  const COUNTRY_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 14;
   const CURRENT_YEAR = new Date().getFullYear();
 
   const state = {
@@ -21,7 +23,8 @@
     metric: 'population',
     sort: 'name',
     query: '',
-    region: 'all'
+    region: 'all',
+    hasLoadedCountries: false
   };
 
   const els = {};
@@ -109,23 +112,30 @@
   }
 
   async function fetchCountries() {
-    try {
+    const cachedCountries = readCountryCache();
+    const usedCache = Boolean(cachedCountries && cachedCountries.length);
+
+    if (usedCache) {
+      hydrateCountries(cachedCountries, 'cache');
+      els.dataStatus.textContent = `${state.countries.length} countries ready from local cache. Refreshing live data…`;
+    } else {
       els.dataStatus.textContent = 'Loading live country data…';
-      const payloads = await Promise.all(COUNTRY_FIELD_SETS.map(fetchCountryFields));
-      const raw = mergeCountryPayloads(payloads);
-      state.countries = raw.map(normalizeCountry).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
-      if (!state.countries.length) throw new Error('REST Countries returned no usable countries.');
-      if (!state.selected.length) {
-        const starterCodes = ['USA', 'BRA', 'JPN', 'NGA'];
-        state.selected = starterCodes.map((code) => state.countries.find((country) => country.code === code)).filter(Boolean);
-      }
-      populateFilters();
-      populateHomeCountries();
-      applyProfileToForm();
-      renderAll();
+    }
+
+    try {
+      const raw = await fetchCountryFields(COUNTRY_FIELDS);
+      const countries = normalizeCountryList(raw);
+      if (!countries.length) throw new Error('REST Countries returned no usable countries.');
+      writeCountryCache(countries);
+      hydrateCountries(countries, 'live');
       els.dataStatus.textContent = `${state.countries.length} countries loaded live from REST Countries.`;
+      if (usedCache) showToast('Live country data refreshed.');
     } catch (error) {
       console.error('Country data error:', error.message, error.stack);
+      if (usedCache || state.countries.length) {
+        els.dataStatus.textContent = `${state.countries.length} countries loaded instantly from cache. Live refresh is still unavailable.`;
+        return;
+      }
       els.dataStatus.textContent = 'Country data could not load. Please refresh or check your connection.';
       showToast('Unable to load live country data.');
     }
@@ -133,10 +143,10 @@
 
   async function fetchCountryFields(fields) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const url = `${API_BASE}?fields=${encodeURIComponent(fields.join(','))}`;
-      const response = await fetch(url, { signal: controller.signal });
+      const url = `${API_BASE}?fields=${fields.join(',')}`;
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
       if (!response.ok) throw new Error(`REST Countries request failed: ${response.status}`);
       const data = await response.json();
       if (!Array.isArray(data)) throw new Error('REST Countries returned an unexpected response shape.');
@@ -146,14 +156,44 @@
     }
   }
 
-  function mergeCountryPayloads(payloads) {
-    const merged = new Map();
-    payloads.flat().forEach((country) => {
-      const code = country && (country.cca3 || (country.name && country.name.common));
-      if (!code) return;
-      merged.set(code, { ...(merged.get(code) || {}), ...country });
-    });
-    return [...merged.values()];
+  function normalizeCountryList(raw) {
+    return raw.map(normalizeCountry).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function hydrateCountries(countries, source) {
+    const previousCodes = state.selected.map((country) => country.code);
+    const starterCodes = ['USA', 'BRA', 'JPN', 'NGA'];
+    const selectedCodes = state.hasLoadedCountries ? previousCodes : starterCodes;
+    state.countries = countries;
+    state.selected = selectedCodes.map((code) => state.countries.find((country) => country.code === code)).filter(Boolean);
+    state.hasLoadedCountries = true;
+    populateFilters();
+    populateHomeCountries();
+    applyProfileToForm();
+    renderAll();
+    if (source === 'cache') console.info('CountryScope rendered cached country data first for a faster start.');
+  }
+
+  function readCountryCache() {
+    try {
+      const stored = localStorage.getItem(COUNTRY_CACHE_KEY);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      const isFresh = parsed && parsed.savedAt && Date.now() - parsed.savedAt < COUNTRY_CACHE_MAX_AGE;
+      if (!isFresh || !Array.isArray(parsed.countries)) return null;
+      return parsed.countries;
+    } catch (error) {
+      console.error('Country cache read error:', error.message);
+      return null;
+    }
+  }
+
+  function writeCountryCache(countries) {
+    try {
+      localStorage.setItem(COUNTRY_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), countries }));
+    } catch (error) {
+      console.error('Country cache write error:', error.message);
+    }
   }
 
   function normalizeCountry(country) {
@@ -420,7 +460,7 @@
   }
 
   function flagMarkup(country) {
-    if (country.flag) return `<img class="flag" src="${escapeAttr(country.flag)}" alt="${escapeAttr(country.flagAlt)}" loading="lazy">`;
+    if (country.flag) return `<img class="flag" src="${escapeAttr(country.flag)}" alt="${escapeAttr(country.flagAlt)}" loading="lazy" decoding="async">`;
     return `<span class="flag" aria-label="Flag placeholder">${flagEmoji(country.code)}</span>`;
   }
 

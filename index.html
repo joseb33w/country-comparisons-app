@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CountryScope | Compare Countries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="orb orb-one"></div>
+  <div class="orb orb-two"></div>
+  <div class="app-shell">
+    <header class="hero">
+      <nav class="topbar" aria-label="Primary navigation">
+        <a class="logo" href="#top" aria-label="CountryScope home">
+          <span class="logo-mark">🌍</span>
+          <span>CountryScope</span>
+        </a>
+        <div class="nav-pills">
+          <a href="#compare">Compare</a>
+          <a href="#bio">Bio</a>
+          <a href="#table">Table</a>
+        </div>
+      </nav>
+
+      <section class="hero-grid" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">Live global country explorer</p>
+          <h1>Compare many countries, then see how your own bio lines up.</h1>
+          <p class="hero-text">Search countries, build a comparison set, scan quick stats, and add a lightweight personal profile to compare your home country, languages, and travel interests against the world.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#compare">Start comparing</a>
+            <button class="btn ghost" id="surpriseBtn" type="button">Surprise me</button>
+          </div>
+          <div class="status-strip" id="dataStatus" role="status">Loading country data…</div>
+        </div>
+        <div class="hero-card" aria-label="Featured country snapshot">
+          <div class="mini-map">✦</div>
+          <p class="hero-card-label">Comparison focus</p>
+          <h2 id="focusCountryName">Global profile</h2>
+          <p id="focusCountryMeta">Choose countries to begin.</p>
+          <div class="hero-stats">
+            <span><strong id="focusPopulation">—</strong> population</span>
+            <span><strong id="focusArea">—</strong> area</span>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section class="panel search-panel" id="compare">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Build your board</p>
+            <h2>Add countries to compare</h2>
+          </div>
+          <button class="btn small danger" id="clearBtn" type="button">Clear all</button>
+        </div>
+        <div class="search-row">
+          <div class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="countrySearch" type="search" autocomplete="off" placeholder="Search by country, capital, region, currency, or language…" aria-label="Search countries" />
+          </div>
+          <select id="regionFilter" aria-label="Filter by region">
+            <option value="all">All regions</option>
+          </select>
+        </div>
+        <div class="suggestions" id="suggestions" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-grid">
+        <aside class="panel bio-panel" id="bio">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Personal lens</p>
+              <h2>Your bio</h2>
+            </div>
+          </div>
+          <form id="bioForm" class="bio-form">
+            <label>Name or nickname
+              <input id="bioName" type="text" maxlength="32" placeholder="Alex" />
+            </label>
+            <label>Birth year
+              <input id="bioYear" type="number" min="1900" max="2026" placeholder="1998" />
+            </label>
+            <label>Home country
+              <select id="homeCountry"></select>
+            </label>
+            <label>Languages you speak
+              <input id="bioLanguages" type="text" placeholder="English, Spanish" />
+            </label>
+            <label>Bio note
+              <textarea id="bioNote" rows="4" maxlength="180" placeholder="Traveler, food lover, football fan…"></textarea>
+            </label>
+            <button class="btn primary full" type="submit">Update my comparison</button>
+          </form>
+          <div class="bio-result" id="bioResult">
+            <div class="bio-avatar">👤</div>
+            <h3>Add your details</h3>
+            <p>Your mini bio will be compared with the countries you select.</p>
+          </div>
+        </aside>
+
+        <section class="panel country-board">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Selected countries</p>
+              <h2 id="selectedCount">0 selected</h2>
+            </div>
+            <select id="sortSelect" aria-label="Sort selected countries">
+              <option value="name">Sort: name</option>
+              <option value="population">Sort: population</option>
+              <option value="area">Sort: area</option>
+              <option value="density">Sort: density</option>
+            </select>
+          </div>
+          <div class="cards-grid" id="countryCards"></div>
+          <div class="empty-state" id="emptyState">
+            <div>🧭</div>
+            <h3>No countries selected yet</h3>
+            <p>Search above or tap “Surprise me” to populate the board.</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel metrics-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Visual comparison</p>
+            <h2>Metric bars</h2>
+          </div>
+          <select id="metricSelect" aria-label="Metric to chart">
+            <option value="population">Population</option>
+            <option value="area">Area</option>
+            <option value="density">Population density</option>
+          </select>
+        </div>
+        <div class="bar-chart" id="barChart"></div>
+      </section>
+
+      <section class="panel table-panel" id="table">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Details</p>
+            <h2>Comparison table</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th>Capital</th>
+                <th>Region</th>
+                <th>Population</th>
+                <th>Area</th>
+                <th>Density</th>
+                <th>Languages</th>
+                <th>Currencies</th>
+              </tr>
+            </thead>
+            <tbody id="compareTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" crossorigin="anonymous"></script>
+</body>
+</html>

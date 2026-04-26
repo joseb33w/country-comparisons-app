@@ -10,8 +10,16 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <input class="tab-radio" type="radio" name="workspaceTab" id="tab-explore-toggle" checked />
+  <input class="tab-radio" type="radio" name="workspaceTab" id="tab-board-toggle" />
+  <input class="tab-radio" type="radio" name="workspaceTab" id="tab-insights-toggle" />
+  <input class="tab-radio" type="radio" name="workspaceTab" id="tab-bio-toggle" />
+  <input class="tab-radio" type="radio" name="workspaceTab" id="tab-table-toggle" />
+
   <div class="orb orb-one"></div>
   <div class="orb orb-two"></div>
+  <div class="orb orb-three"></div>
+
   <div class="app-shell">
     <header class="hero">
       <nav class="topbar" aria-label="Primary navigation">
@@ -19,27 +27,31 @@
           <span class="logo-mark">🌍</span>
           <span>CountryScope</span>
         </a>
-        <div class="nav-pills">
-          <a href="#compare">Compare</a>
-          <a href="#bio">Bio</a>
-          <a href="#table">Table</a>
+        <div class="nav-pills" aria-label="Workspace tabs">
+          <label for="tab-explore-toggle">Explore</label>
+          <label for="tab-board-toggle">Board</label>
+          <label for="tab-insights-toggle">Insights</label>
+          <label for="tab-bio-toggle">Bio</label>
+          <label for="tab-table-toggle">Table</label>
         </div>
       </nav>
 
       <section class="hero-grid" id="top">
         <div class="hero-copy">
-          <p class="eyebrow">Live global country explorer</p>
-          <h1>Compare many countries, then see how your own bio lines up.</h1>
-          <p class="hero-text">Search countries, build a comparison set, scan quick stats, and add a lightweight personal profile to compare your home country, languages, and travel interests against the world.</p>
+          <p class="eyebrow">Live global country studio</p>
+          <h1>Paint a sharper picture of the world.</h1>
+          <p class="hero-text">CountryScope is now a tabbed atlas workspace: search countries, pin favorites to a comparison board, jump into visual insights, and compare your own mini bio without scrolling through one long page.</p>
           <div class="hero-actions">
-            <a class="btn primary" href="#compare">Start comparing</a>
+            <label class="btn primary" for="tab-explore-toggle">Start exploring</label>
             <button class="btn ghost" id="surpriseBtn" type="button">Surprise me</button>
           </div>
           <div class="status-strip" id="dataStatus" role="status">Loading country data…</div>
         </div>
         <div class="hero-card" aria-label="Featured country snapshot">
-          <div class="mini-map">✦</div>
-          <p class="hero-card-label">Comparison focus</p>
+          <div class="art-frame">
+            <div class="mini-map">✦</div>
+          </div>
+          <p class="hero-card-label">Current canvas</p>
           <h2 id="focusCountryName">Global profile</h2>
           <p id="focusCountryMeta">Choose countries to begin.</p>
           <div class="hero-stats">
@@ -50,60 +62,46 @@
       </section>
     </header>
 
-    <main>
-      <section class="panel search-panel" id="compare">
-        <div class="section-heading">
+    <main class="workspace" aria-label="Country comparison workspace">
+      <div class="tab-dock" role="tablist" aria-label="CountryScope sections">
+        <label class="tab-btn" for="tab-explore-toggle" role="tab"><span>01</span> Explore</label>
+        <label class="tab-btn" for="tab-board-toggle" role="tab"><span>02</span> Board</label>
+        <label class="tab-btn" for="tab-insights-toggle" role="tab"><span>03</span> Insights</label>
+        <label class="tab-btn" for="tab-bio-toggle" role="tab"><span>04</span> Bio</label>
+        <label class="tab-btn" for="tab-table-toggle" role="tab"><span>05</span> Table</label>
+      </div>
+
+      <section class="tab-panel" id="tab-explore" aria-label="Explore countries">
+        <div class="tab-hero-note">
           <div>
-            <p class="eyebrow">Build your board</p>
-            <h2>Add countries to compare</h2>
+            <p class="eyebrow">Explore tab</p>
+            <h2>Search the living atlas</h2>
           </div>
-          <button class="btn small danger" id="clearBtn" type="button">Clear all</button>
+          <p>Use the search studio to find countries by name, capital, currency, language, or region. Tap a result to pin it to your comparison board.</p>
         </div>
-        <div class="search-row">
-          <div class="search-box">
-            <span aria-hidden="true">⌕</span>
-            <input id="countrySearch" type="search" autocomplete="off" placeholder="Search by country, capital, region, currency, or language…" aria-label="Search countries" />
+
+        <section class="panel search-panel" id="compare">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Build your board</p>
+              <h2>Add countries to compare</h2>
+            </div>
+            <button class="btn small danger" id="clearBtn" type="button">Clear all</button>
           </div>
-          <select id="regionFilter" aria-label="Filter by region">
-            <option value="all">All regions</option>
-          </select>
-        </div>
-        <div class="suggestions" id="suggestions" aria-live="polite"></div>
+          <div class="search-row">
+            <div class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input id="countrySearch" type="search" autocomplete="off" placeholder="Search by country, capital, region, currency, or language…" aria-label="Search countries" />
+            </div>
+            <select id="regionFilter" aria-label="Filter by region">
+              <option value="all">All regions</option>
+            </select>
+          </div>
+          <div class="suggestions" id="suggestions" aria-live="polite"></div>
+        </section>
       </section>
 
-      <section class="dashboard-grid">
-        <aside class="panel bio-panel" id="bio">
-          <div class="section-heading compact">
-            <div>
-              <p class="eyebrow">Personal lens</p>
-              <h2>Your bio</h2>
-            </div>
-          </div>
-          <form id="bioForm" class="bio-form">
-            <label>Name or nickname
-              <input id="bioName" type="text" maxlength="32" placeholder="Alex" />
-            </label>
-            <label>Birth year
-              <input id="bioYear" type="number" min="1900" max="2026" placeholder="1998" />
-            </label>
-            <label>Home country
-              <select id="homeCountry"></select>
-            </label>
-            <label>Languages you speak
-              <input id="bioLanguages" type="text" placeholder="English, Spanish" />
-            </label>
-            <label>Bio note
-              <textarea id="bioNote" rows="4" maxlength="180" placeholder="Traveler, food lover, football fan…"></textarea>
-            </label>
-            <button class="btn primary full" type="submit">Update my comparison</button>
-          </form>
-          <div class="bio-result" id="bioResult">
-            <div class="bio-avatar">👤</div>
-            <h3>Add your details</h3>
-            <p>Your mini bio will be compared with the countries you select.</p>
-          </div>
-        </aside>
-
+      <section class="tab-panel" id="tab-board" aria-label="Selected country board">
         <section class="panel country-board">
           <div class="section-heading compact">
             <div>
@@ -121,50 +119,92 @@
           <div class="empty-state" id="emptyState">
             <div>🧭</div>
             <h3>No countries selected yet</h3>
-            <p>Search above or tap “Surprise me” to populate the board.</p>
+            <p>Open the Explore tab or tap “Surprise me” to populate the board.</p>
           </div>
         </section>
       </section>
 
-      <section class="panel metrics-panel">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Visual comparison</p>
-            <h2>Metric bars</h2>
+      <section class="tab-panel" id="tab-insights" aria-label="Visual metric insights">
+        <section class="panel metrics-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Visual comparison</p>
+              <h2>Metric bars</h2>
+            </div>
+            <select id="metricSelect" aria-label="Metric to chart">
+              <option value="population">Population</option>
+              <option value="area">Area</option>
+              <option value="density">Population density</option>
+            </select>
           </div>
-          <select id="metricSelect" aria-label="Metric to chart">
-            <option value="population">Population</option>
-            <option value="area">Area</option>
-            <option value="density">Population density</option>
-          </select>
-        </div>
-        <div class="bar-chart" id="barChart"></div>
+          <div class="bar-chart" id="barChart"></div>
+        </section>
       </section>
 
-      <section class="panel table-panel" id="table">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Details</p>
-            <h2>Comparison table</h2>
+      <section class="tab-panel" id="tab-bio" aria-label="Personal bio comparison">
+        <section class="panel bio-panel" id="bio">
+          <div class="bio-layout">
+            <div>
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Personal lens</p>
+                  <h2>Your bio comparison</h2>
+                </div>
+              </div>
+              <form id="bioForm" class="bio-form">
+                <label>Name or nickname
+                  <input id="bioName" type="text" maxlength="32" placeholder="Alex" />
+                </label>
+                <label>Birth year
+                  <input id="bioYear" type="number" min="1900" max="2026" placeholder="1998" />
+                </label>
+                <label>Home country
+                  <select id="homeCountry"></select>
+                </label>
+                <label>Languages you speak
+                  <input id="bioLanguages" type="text" placeholder="English, Spanish" />
+                </label>
+                <label>Bio note
+                  <textarea id="bioNote" rows="4" maxlength="180" placeholder="Traveler, food lover, football fan…"></textarea>
+                </label>
+                <button class="btn primary full" type="submit">Update my comparison</button>
+              </form>
+            </div>
+            <div class="bio-result" id="bioResult">
+              <div class="bio-avatar">👤</div>
+              <h3>Add your details</h3>
+              <p>Your mini bio will be compared with the countries you select.</p>
+            </div>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Country</th>
-                <th>Capital</th>
-                <th>Region</th>
-                <th>Population</th>
-                <th>Area</th>
-                <th>Density</th>
-                <th>Languages</th>
-                <th>Currencies</th>
-              </tr>
-            </thead>
-            <tbody id="compareTable"></tbody>
-          </table>
-        </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="tab-table" aria-label="Detailed comparison table">
+        <section class="panel table-panel" id="table">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Details</p>
+              <h2>Comparison table</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Country</th>
+                  <th>Capital</th>
+                  <th>Region</th>
+                  <th>Population</th>
+                  <th>Area</th>
+                  <th>Density</th>
+                  <th>Languages</th>
+                  <th>Currencies</th>
+                </tr>
+              </thead>
+              <tbody id="compareTable"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </main>
   </div>

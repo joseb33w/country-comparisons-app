@@ -4,11 +4,12 @@ CountryScope is a polished browser app for comparing countries around the world 
 
 ## Features
 
+- Creative tabbed atlas interface instead of one long scrolling page
 - Search and add many countries to a comparison board
 - Uses live REST Countries API data in the browser
 - Compare population, area, density, region, languages, currencies, capitals, time zones, and more
 - Personal bio card that compares your home country/languages/interests with selected countries
-- Sortable comparison table and visual metric bars
+- Sortable comparison cards, visual metric bars, and a detailed comparison table
 - Responsive, mobile-friendly design
 
 ## Preview
